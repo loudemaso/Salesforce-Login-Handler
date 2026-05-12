@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Saml_Setting_Api_Name__c</fullName>
+    <label>SAML Setting API Name</label>
+    <description>DeveloperName of the Single Sign-On Setting (SAML) row in Setup for this org.</description>
+    <required>true</required>
+    <type>Text</type>
+    <length>255</length>
+    <externalId>false</externalId>
+    <unique>false</unique>
+</CustomField>

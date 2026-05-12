@@ -1,0 +1,73 @@
+:host {
+    display: block;
+}
+
+.login-shell {
+    --login-border-color: #dddbda;
+    --login-link-color: #0176d3;
+    --login-error-color: #c23934;
+    box-sizing: border-box;
+    background: #ffffff;
+    display: flex;
+    justify-content: center;
+    padding: 0.75rem 1rem 1rem;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 400px;
+    box-sizing: border-box;
+    background: #ffffff;
+    border: 1px solid var(--login-border-color);
+    border-radius: 0.25rem;
+    padding: 1.5rem 2rem;
+}
+
+.form-error {
+    margin: 0;
+    color: var(--login-error-color);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    text-align: left;
+}
+
+.actions-row {
+    display: flex;
+    justify-content: center;
+    margin-top: 1.25rem;
+}
+
+.actions-row--split {
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.spinner-wrap {
+    display: flex;
+    justify-content: center;
+    margin-top: 1rem;
+}
+
+.footer-divider {
+    border: 0;
+    border-top: 1px solid #e5e5e5;
+    margin: 1.25rem 0 0.75rem;
+}
+
+.footer-row {
+    text-align: left;
+}
+
+.forgot-link {
+    font-size: 0.8125rem;
+    color: var(--login-link-color);
+    text-decoration: none;
+}
+
+.forgot-link:hover,
+.forgot-link:focus {
+    text-decoration: underline;
+    color: var(--login-link-color);
+}

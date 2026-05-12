@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>Client SSO Routing</label>
+    <pluralLabel>Client SSO Routings</pluralLabel>
+    <description>Maps marker permission sets to SAML Single Sign-On Setting API names for email-first login routing.</description>
+    <visibility>Public</visibility>
+</CustomObject>

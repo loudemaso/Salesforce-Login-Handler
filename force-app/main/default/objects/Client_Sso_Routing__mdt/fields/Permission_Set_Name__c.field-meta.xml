@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Permission_Set_Name__c</fullName>
+    <label>Permission Set Name</label>
+    <description>API name of the marker permission set assigned to users who should use this SAML route.</description>
+    <required>true</required>
+    <type>Text</type>
+    <length>255</length>
+    <externalId>false</externalId>
+    <unique>false</unique>
+</CustomField>

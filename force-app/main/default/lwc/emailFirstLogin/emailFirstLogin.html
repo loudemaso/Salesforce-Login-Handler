@@ -1,0 +1,79 @@
+<template>
+    <div class="login-shell">
+        <div class="login-card">
+            <template if:true={isEmailStep}>
+                <lightning-input
+                    type="email"
+                    label="Email"
+                    name="email"
+                    value={email}
+                    onchange={handleEmailChange}
+                    autocomplete="username"
+                    required
+                    disabled={loading}
+                    variant="label-stacked"
+                ></lightning-input>
+
+                <template if:true={errorMessage}>
+                    <p class="form-error slds-m-top_small" role="alert">{errorMessage}</p>
+                </template>
+
+                <div class="actions-row">
+                    <lightning-button
+                        variant="neutral"
+                        label="Next"
+                        title="Next"
+                        onclick={handleNext}
+                        disabled={loadingOrEmptyEmail}
+                    ></lightning-button>
+                </div>
+            </template>
+
+            <template if:true={isPasswordStep}>
+                <lightning-input
+                    type="password"
+                    label="Password"
+                    name="password"
+                    value={password}
+                    onchange={handlePasswordChange}
+                    autocomplete="current-password"
+                    required
+                    disabled={loading}
+                    variant="label-stacked"
+                ></lightning-input>
+
+                <template if:true={errorMessage}>
+                    <p class="form-error slds-m-top_small" role="alert">{errorMessage}</p>
+                </template>
+
+                <div class="actions-row actions-row--split">
+                    <lightning-button
+                        variant="neutral"
+                        label="Back"
+                        title="Back"
+                        onclick={handleBack}
+                        disabled={loading}
+                    ></lightning-button>
+                    <lightning-button
+                        variant="neutral"
+                        label="Sign in"
+                        title="Sign in"
+                        onclick={handleSignIn}
+                        disabled={loadingOrEmptyPassword}
+                    ></lightning-button>
+                </div>
+            </template>
+
+            <template if:true={loading}>
+                <div class="spinner-wrap">
+                    <lightning-spinner alternative-text="Loading" size="small"></lightning-spinner>
+                </div>
+            </template>
+
+            <div class="footer-divider"></div>
+            <div class="footer-row">
+                <a class="forgot-link" href={forgotPasswordUrl}>Forgot Your Password?</a>
+            </div>
+        </div>
+    </div>
+</template>
