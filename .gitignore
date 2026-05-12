@@ -1,0 +1,20 @@
+# Salesforce DX
+.sfdx/
+.sf/
+.localdevserver/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+*.swp
+*.swo
+
+# Dependencies (if you add JS tooling later)
+node_modules/
