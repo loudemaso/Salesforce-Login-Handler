@@ -4,6 +4,8 @@ import passwordLogin from '@salesforce/apex/LoginRouterService.passwordLogin';
 
 const STEP_EMAIL = 'email';
 const STEP_PASSWORD = 'password';
+const ROUTE_SSO = 'SSO';
+const ROUTE_PASSWORD = 'PASSWORD';
 const FALLBACK_FORGOT_PATH = '/s/ForgotPassword';
 const GENERIC_CLIENT_ERROR = 'Something went wrong. Please try again.';
 const GENERIC_LOGIN_ERROR = 'Invalid username or password.';
@@ -61,11 +63,15 @@ export default class EmailFirstLogin extends LightningElement {
         this.loading = true;
         try {
             const result = await discover({ email: this.email });
-            if (result.type === 'SSO' && result.redirectUrl) {
+            if (result.type === ROUTE_SSO && result.redirectUrl) {
                 window.location.assign(result.redirectUrl);
                 return;
             }
-            this.step = STEP_PASSWORD;
+            if (result.type === ROUTE_PASSWORD) {
+                this.step = STEP_PASSWORD;
+                return;
+            }
+            this.errorMessage = GENERIC_CLIENT_ERROR;
         } catch (e) {
             this.errorMessage = GENERIC_CLIENT_ERROR;
         } finally {

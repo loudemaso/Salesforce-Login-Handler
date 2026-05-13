@@ -39,9 +39,9 @@ In **Setup**, confirm **`LoginRouterService`**, **`emailFirstLogin`**, **`Client
 
 **3. `User` visibility for Guest (`discover` query)**
 
-`LoginRouterService.discover` runs as the **Guest** user and queries **`User`** by email.
+`LoginRouterService.discover` runs as the **Guest** user and queries **`User`** by **Username** or **Email**.
 
-- In **Setup**, configure **User** sharing so **external** / Experience **Guest** access is appropriate for your org. The pattern we validated is **User** organization-wide default / **external user** access set to **Public Read Only** (so Guest can read `User` rows needed for email lookup **without** extra profile/permission-set grants on **User**).
+- In **Setup**, configure **User** sharing so **external** / Experience **Guest** access is appropriate for your org. The pattern we validated is **User** organization-wide default / **external user** access set to **Public Read Only** (so Guest can read `User` rows needed for login routing **without** extra profile/permission-set grants on **User**). Ensure Guest can read **`User.Email`** and **`User.Username`** (field-level security) so discovery and password login can resolve the sign-in identifier.
 - With **Public Read Only** for external users on **User**: **do not** add **User** object or **User** field permissions on the **`Login_Router_Guest`** permission set (and avoid redundant **User** object access on the Guest user solely for this feature). Rely on that OWD; then tune **PermissionSet** / **PermissionSetAssignment** only (see step 4).
 - If your org **cannot** use **Public Read Only** on **User** for external users, you must agree another supported way for Guest to read `User` for login routing, then re-test with a Guest **debug log**.
 
@@ -54,19 +54,22 @@ In **Setup**, confirm **`LoginRouterService`**, **`emailFirstLogin`**, **`Client
 **5. CMDT and SAML (per org, per SSO client)**
 
 1. Ensure **Single Sign-On Settings (SAML)** exist in Setup; note each row’s **`DeveloperName`**.
-2. Create **`Client_Sso_Routing__mdt`** records: `Permission_Set_Name__c` (marker permission set API name), `Saml_Setting_Api_Name__c` (that SAML row’s `DeveloperName`), `Protocol__c = SAML`, `Is_Active__c`, `Priority__c`.
+2. Create **`Client_Sso_Routing__mdt`** records: `Permission_Set_Name__c` (must match the marker permission set’s **`Name`** (API) or **`Label`** exactly), `Saml_Setting_Api_Name__c` (SAML row **`DeveloperName`** for logging and fallback lookup), **`Saml_Sso_Config_Id__c`** (optional but **recommended**: paste the **`SamlSsoConfig` Id** from Setup or `SELECT Id, DeveloperName FROM SamlSsoConfig` — **Experience Guest** usually cannot query **SamlSsoConfig** by name, so SSO URLs fail without this Id), `Protocol__c = SAML`, `Is_Active__c`, `Priority__c`.
 3. Create **marker permission sets** (no privileges required), assign them to users who should SSO, and keep CMDT rows **active** for production routes.
 
 **6. Members and smoke tests**
 
 1. Add test users as **Experience site members** with a valid **login license**.
-2. Ensure **`User.Email`** matches what they type on step 1 of the component.
-3. Test **password** login first (user **without** a marker permission set), then **SSO** (user **with** marker + active CMDT). Use an **incognito** window to avoid session noise.
+2. On step 1, members can enter **`User.Email`** or **`User.Username`** as long as it **uniquely** matches one **active** user (same rule for SSO discovery). Password sign-in resolves that user and calls **`Site.login`** with their **`Username`**.
+3. Test **password** login with a user **without** an SSO marker (discover returns **`PASSWORD`**). Test **SSO** redirect when SAML URL builds. If SAML is misconfigured, discover should still return **`PASSWORD`** for a single matching SSO-mapped user (fallback); use Guest **debug logs** (**WARN** `ssoUrlBlank`) to fix **`Saml_Setting_Api_Name__c`** / SAML settings. Confirm unknown or ambiguous identifiers return **`NONE`**. Use an **incognito** window to avoid session noise.
 
 ## Documentation
 
+Specs follow **[Documentation Spec.md](Documentation%20Spec.md)** (required section headers and editing rules).
+
 - [documentation/Feature-Email-first-Experience-login.md](documentation/Feature-Email-first-Experience-login.md) — runtime, UI contract, components.
 - [documentation/System-Components.md](documentation/System-Components.md) — CMDT fields and Apex/LWC contracts.
+- [documentation/Login-discovery-handler-option.md](documentation/Login-discovery-handler-option.md) — when **`Auth.LoginDiscoveryHandler`** / Help passwordless guidance applies vs this repo’s LWC + **`Site.login`** path (and **`Saml_Sso_Config_Id__c`** tradeoff).
 
 ## Project shape
 

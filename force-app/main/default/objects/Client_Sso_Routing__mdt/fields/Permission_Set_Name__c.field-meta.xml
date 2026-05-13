@@ -2,7 +2,7 @@
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Permission_Set_Name__c</fullName>
     <label>Permission Set Name</label>
-    <description>API name of the marker permission set assigned to users who should use this SAML route.</description>
+    <description>Must match PermissionSet.Name (API name) or PermissionSet.Label on assignments for this route. CMDT value is compared case-sensitively to those strings.</description>
     <required>true</required>
     <type>Text</type>
     <length>255</length>

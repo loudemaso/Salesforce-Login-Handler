@@ -3,7 +3,7 @@
     <apiVersion>61.0</apiVersion>
     <isExposed>true</isExposed>
     <masterLabel>Email First Login</masterLabel>
-    <description>Two-step email then password login; routes to SAML when CMDT + marker permission set match.</description>
+    <description>Email-first login: SAML when CMDT + marker match; password step only for a single non-SSO user; otherwise stay on the first step.</description>
     <targets>
         <target>lightningCommunity__Page</target>
     </targets>

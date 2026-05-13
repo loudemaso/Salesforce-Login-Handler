@@ -8,13 +8,20 @@ private class LoginRouterServiceTest {
     }
 
     private static User insertTestUser(String email) {
+        return insertTestUserWithCredentials(email, email + '.user');
+    }
+
+    private static User insertTestUserWithCredentials(String emailAddr, String username) {
+        counter++;
         Profile p = [SELECT Id FROM Profile WHERE Name = 'Standard User' LIMIT 1];
+        String aliasSeed = 'r' + String.valueOf(counter) + String.valueOf(System.currentTimeMillis());
+        String alias = aliasSeed.length() > 8 ? aliasSeed.substring(0, 8) : aliasSeed;
         User u = new User(
             FirstName = 'Router',
             LastName = 'Test',
-            Email = email,
-            Username = email + '.user',
-            Alias = 'rtu',
+            Email = emailAddr,
+            Username = username,
+            Alias = alias,
             TimeZoneSidKey = 'America/Los_Angeles',
             LocaleSidKey = 'en_US',
             EmailEncodingKey = 'UTF-8',
@@ -64,18 +71,32 @@ private class LoginRouterServiceTest {
     }
 
     @IsTest
-    static void discover_blankEmail_returnsPasswordRoute() {
+    static void discover_blankEmail_returnsNoneRoute() {
         LoginRouterService.DiscoverResult r = LoginRouterService.discover('');
-        System.assertEquals('PASSWORD', r.type);
+        System.assertEquals('NONE', r.type);
         System.assertEquals(null, r.redirectUrl);
         System.assertNotEquals(null, r.correlationId);
     }
 
     @IsTest
-    static void discover_unknownEmail_returnsPasswordRoute() {
+    static void discover_unknownEmail_returnsNoneRoute() {
         LoginRouterService.TEST_ROUTING_ROWS = new List<Client_Sso_Routing__mdt>();
         LoginRouterService.DiscoverResult r = LoginRouterService.discover(newUniqueEmail());
-        System.assertEquals('PASSWORD', r.type);
+        System.assertEquals('NONE', r.type);
+        System.assertEquals(null, r.redirectUrl);
+    }
+
+    @IsTest
+    static void discover_identifierMatchesTwoUsers_returnsNoneRoute() {
+        counter++;
+        String shared = 'collide-' + System.currentTimeMillis() + '-' + counter + '@routertest.invalid';
+        insertTestUserWithCredentials(shared, 'collide-a-' + counter + '@routertest.invalid');
+        insertTestUserWithCredentials('other-' + counter + '@routertest.invalid', shared);
+        LoginRouterService.TEST_ROUTING_ROWS = new List<Client_Sso_Routing__mdt>();
+
+        LoginRouterService.DiscoverResult r = LoginRouterService.discover(shared);
+
+        System.assertEquals('NONE', r.type);
         System.assertEquals(null, r.redirectUrl);
     }
 
@@ -128,6 +149,78 @@ private class LoginRouterServiceTest {
     }
 
     @IsTest
+    static void discover_happyPath_usernameIdentifier_returnsSsoRedirect() {
+        String email = newUniqueEmail();
+        User u = insertTestUser(email);
+        PermissionSet ps = insertMarkerPermissionSet();
+        assignMarker(u, ps);
+        LoginRouterService.TEST_ROUTING_ROWS = new List<Client_Sso_Routing__mdt>{
+            new Client_Sso_Routing__mdt(
+                Permission_Set_Name__c = ps.Name,
+                Protocol__c = 'SAML',
+                Is_Active__c = true,
+                Saml_Setting_Api_Name__c = 'Test_Saml_Setting'
+            )
+        };
+        LoginRouterService.TEST_SSO_URL_OVERRIDE = 'https://idp.example/start';
+
+        LoginRouterService.DiscoverResult r = LoginRouterService.discover(u.Username);
+
+        System.assertEquals('SSO', r.type);
+        System.assertEquals('https://idp.example/start', r.redirectUrl);
+    }
+
+    @IsTest
+    static void discover_happyPath_samlSsoConfigIdPresentStillHonorsUrlOverride() {
+        String email = newUniqueEmail();
+        User u = insertTestUser(email);
+        PermissionSet ps = insertMarkerPermissionSet();
+        assignMarker(u, ps);
+        LoginRouterService.TEST_ROUTING_ROWS = new List<Client_Sso_Routing__mdt>{
+            new Client_Sso_Routing__mdt(
+                Permission_Set_Name__c = ps.Name,
+                Protocol__c = 'SAML',
+                Is_Active__c = true,
+                Saml_Setting_Api_Name__c = 'Test_Saml_Setting',
+                Saml_Sso_Config_Id__c = '00D000000000000EAA'
+            )
+        };
+        LoginRouterService.TEST_SSO_URL_OVERRIDE = 'https://idp.example/with-id-field';
+
+        LoginRouterService.DiscoverResult r = LoginRouterService.discover(email);
+
+        System.assertEquals('SSO', r.type);
+        System.assertEquals('https://idp.example/with-id-field', r.redirectUrl);
+    }
+
+    @IsTest
+    static void discover_cmdtMatchesPermissionSetLabel_returnsSsoRedirect() {
+        String email = newUniqueEmail();
+        User u = insertTestUser(email);
+        counter++;
+        PermissionSet ps = new PermissionSet(
+            Name = 'Login_Router_MarkerLbl_' + String.valueOf(System.currentTimeMillis()) + '_' + counter,
+            Label = 'Login Router Marker Label ' + String.valueOf(System.currentTimeMillis())
+        );
+        insert ps;
+        assignMarker(u, ps);
+        LoginRouterService.TEST_ROUTING_ROWS = new List<Client_Sso_Routing__mdt>{
+            new Client_Sso_Routing__mdt(
+                Permission_Set_Name__c = ps.Label,
+                Protocol__c = 'SAML',
+                Is_Active__c = true,
+                Saml_Setting_Api_Name__c = 'Test_Saml_Setting'
+            )
+        };
+        LoginRouterService.TEST_SSO_URL_OVERRIDE = 'https://idp.example/label-match';
+
+        LoginRouterService.DiscoverResult r = LoginRouterService.discover(email);
+
+        System.assertEquals('SSO', r.type);
+        System.assertEquals('https://idp.example/label-match', r.redirectUrl);
+    }
+
+    @IsTest
     static void discover_routeFoundButSsoUrlMissing_returnsPasswordRoute() {
         String email = newUniqueEmail();
         User u = insertTestUser(email);
@@ -141,7 +234,7 @@ private class LoginRouterServiceTest {
                 Saml_Setting_Api_Name__c = 'Missing_Saml_Setting'
             )
         };
-        // No TEST_SSO_URL_OVERRIDE: real SamlSsoConfig query runs and returns no rows → URL is null → PASSWORD fallback.
+        // No TEST_SSO_URL_OVERRIDE: real SamlSsoConfig query returns no rows → URL is null → PASSWORD fallback.
 
         LoginRouterService.DiscoverResult r = LoginRouterService.discover(email);
 
