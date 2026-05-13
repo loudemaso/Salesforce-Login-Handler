@@ -1,6 +1,6 @@
 import { LightningElement } from 'lwc';
-import discover from '@salesforce/apex/LoginRouterService.discover';
-import passwordLogin from '@salesforce/apex/LoginRouterService.passwordLogin';
+import discover from '@salesforce/apex/LoginRouter.discover';
+import passwordLogin from '@salesforce/apex/LoginRouter.passwordLogin';
 
 const STEP_EMAIL = 'email';
 const STEP_PASSWORD = 'password';
@@ -33,7 +33,6 @@ export default class EmailFirstLogin extends LightningElement {
         return this.loading || !this.password;
     }
 
-    // Map current `/login` URL to the standard Experience Forgot Password page; otherwise use `/s/ForgotPassword`.
     get forgotPasswordUrl() {
         try {
             const u = new URL(window.location.href);
@@ -58,27 +57,19 @@ export default class EmailFirstLogin extends LightningElement {
         this.errorMessage = '';
     }
 
-    communityOrigin() {
-        try {
-            return window.location.origin;
-        } catch (e) {
-            return '';
-        }
-    }
-
     async handleNext() {
         this.errorMessage = '';
         this.loading = true;
         try {
             const result = await discover({
-                email: this.email,
-                communityBaseUrl: this.communityOrigin()
+                identifier: this.email,
+                communityBaseUrl: window.location.origin
             });
-            if (result.type === ROUTE_SSO && result.redirectUrl) {
+            if (result.route === ROUTE_SSO && result.redirectUrl) {
                 window.location.assign(result.redirectUrl);
                 return;
             }
-            if (result.type === ROUTE_PASSWORD) {
+            if (result.route === ROUTE_PASSWORD) {
                 this.step = STEP_PASSWORD;
                 return;
             }
@@ -101,7 +92,7 @@ export default class EmailFirstLogin extends LightningElement {
         this.loading = true;
         try {
             const result = await passwordLogin({
-                email: this.email,
+                identifier: this.email,
                 password: this.password
             });
             if (result.success && result.redirectUrl) {

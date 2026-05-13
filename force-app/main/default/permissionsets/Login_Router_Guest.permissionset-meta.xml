@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
     <classAccesses>
-        <apexClass>LoginRouterService</apexClass>
+        <apexClass>LoginRouter</apexClass>
         <enabled>true</enabled>
     </classAccesses>
-    <description>Assign to the Experience Cloud site Guest User when the site uses emailFirstLogin on the Login page. Grants Apex on LoginRouterService only; admins configure User / PermissionSetAssignment access per org.</description>
+    <description>Assign to the Experience Cloud site Guest User when the site uses emailFirstLogin on the Login page. Grants Apex on LoginRouter only; admins configure User and PermissionSetAssignment access per org.</description>
     <hasActivationRequired>false</hasActivationRequired>
     <label>Login Router Guest</label>
 </PermissionSet>
