@@ -1,32 +1,19 @@
-import { LightningElement, track } from 'lwc';
+import { LightningElement } from 'lwc';
 import discover from '@salesforce/apex/LoginRouterService.discover';
 import passwordLogin from '@salesforce/apex/LoginRouterService.passwordLogin';
 
 const STEP_EMAIL = 'email';
 const STEP_PASSWORD = 'password';
+const FALLBACK_FORGOT_PATH = '/s/ForgotPassword';
+const GENERIC_CLIENT_ERROR = 'Something went wrong. Please try again.';
+const GENERIC_LOGIN_ERROR = 'Invalid username or password.';
 
 export default class EmailFirstLogin extends LightningElement {
-    @track step = STEP_EMAIL;
-    @track email = '';
-    @track password = '';
-    @track loading = false;
-    @track errorMessage = '';
-
-    connectedCallback() {
-        this.readStartUrlFromLocation();
-    }
-
-    readStartUrlFromLocation() {
-        try {
-            const params = new URLSearchParams(window.location.search);
-            const raw = params.get('startURL') || params.get('startUrl') || '';
-            this._startUrl = raw || '/s/';
-        } catch (e) {
-            this._startUrl = '/s/';
-        }
-    }
-
-    _startUrl = '/s/';
+    step = STEP_EMAIL;
+    email = '';
+    password = '';
+    loading = false;
+    errorMessage = '';
 
     get isEmailStep() {
         return this.step === STEP_EMAIL;
@@ -36,28 +23,27 @@ export default class EmailFirstLogin extends LightningElement {
         return this.step === STEP_PASSWORD;
     }
 
-    /** Map current .../login URL to standard Experience Forgot Password page */
-    get forgotPasswordUrl() {
-        try {
-            const u = new URL(window.location.href);
-            const path = u.pathname || '';
-            if (/\/login\/?$/i.test(path)) {
-                u.pathname = path.replace(/\/login\/?$/i, '/ForgotPassword').replace(/\/{2,}/g, '/');
-            } else {
-                u.pathname = '/s/ForgotPassword';
-            }
-            return u.toString();
-        } catch (e) {
-            return '#';
-        }
-    }
-
     get loadingOrEmptyEmail() {
         return this.loading || !this.email || !this.email.trim();
     }
 
     get loadingOrEmptyPassword() {
         return this.loading || !this.password;
+    }
+
+    // Map current `/login` URL to the standard Experience Forgot Password page; otherwise use `/s/ForgotPassword`.
+    get forgotPasswordUrl() {
+        try {
+            const u = new URL(window.location.href);
+            if (/\/login\/?$/i.test(u.pathname)) {
+                u.pathname = u.pathname.replace(/\/login\/?$/i, '/ForgotPassword').replace(/\/{2,}/g, '/');
+            } else {
+                u.pathname = FALLBACK_FORGOT_PATH;
+            }
+            return u.toString();
+        } catch (e) {
+            return '#';
+        }
     }
 
     handleEmailChange(event) {
@@ -74,17 +60,14 @@ export default class EmailFirstLogin extends LightningElement {
         this.errorMessage = '';
         this.loading = true;
         try {
-            const result = await discover({
-                email: this.email,
-                startUrl: this._startUrl
-            });
+            const result = await discover({ email: this.email });
             if (result.type === 'SSO' && result.redirectUrl) {
                 window.location.assign(result.redirectUrl);
                 return;
             }
             this.step = STEP_PASSWORD;
         } catch (e) {
-            this.errorMessage = 'Something went wrong. Please try again.';
+            this.errorMessage = GENERIC_CLIENT_ERROR;
         } finally {
             this.loading = false;
         }
@@ -102,16 +85,15 @@ export default class EmailFirstLogin extends LightningElement {
         try {
             const result = await passwordLogin({
                 email: this.email,
-                password: this.password,
-                startUrl: this._startUrl
+                password: this.password
             });
             if (result.success && result.redirectUrl) {
                 window.location.assign(result.redirectUrl);
                 return;
             }
-            this.errorMessage = result.message || 'Invalid username or password.';
+            this.errorMessage = result.message || GENERIC_LOGIN_ERROR;
         } catch (e) {
-            this.errorMessage = 'Something went wrong. Please try again.';
+            this.errorMessage = GENERIC_CLIENT_ERROR;
         } finally {
             this.loading = false;
         }

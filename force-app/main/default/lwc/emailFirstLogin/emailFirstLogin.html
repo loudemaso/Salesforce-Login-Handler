@@ -1,7 +1,7 @@
 <template>
     <div class="login-shell">
         <div class="login-card">
-            <template if:true={isEmailStep}>
+            <template lwc:if={isEmailStep}>
                 <lightning-input
                     type="email"
                     label="Email"
@@ -14,7 +14,7 @@
                     variant="label-stacked"
                 ></lightning-input>
 
-                <template if:true={errorMessage}>
+                <template lwc:if={errorMessage}>
                     <p class="form-error slds-m-top_small" role="alert">{errorMessage}</p>
                 </template>
 
@@ -29,7 +29,7 @@
                 </div>
             </template>
 
-            <template if:true={isPasswordStep}>
+            <template lwc:if={isPasswordStep}>
                 <lightning-input
                     type="password"
                     label="Password"
@@ -42,7 +42,7 @@
                     variant="label-stacked"
                 ></lightning-input>
 
-                <template if:true={errorMessage}>
+                <template lwc:if={errorMessage}>
                     <p class="form-error slds-m-top_small" role="alert">{errorMessage}</p>
                 </template>
 
@@ -64,7 +64,7 @@
                 </div>
             </template>
 
-            <template if:true={loading}>
+            <template lwc:if={loading}>
                 <div class="spinner-wrap">
                     <lightning-spinner alternative-text="Loading" size="small"></lightning-spinner>
                 </div>

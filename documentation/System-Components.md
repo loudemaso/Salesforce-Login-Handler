@@ -28,12 +28,14 @@ Global reference for durable building blocks in this repository. Feature-specifi
 
 **Public interface:**
 
-- `@AuraEnabled(cacheable=false) static DiscoverResult discover(String email, String startUrl)` — returns `type` **`SSO`** or **`PASSWORD`**, optional `redirectUrl` for SSO, `normalizedStartUrl` (`/s/`), and `correlationId`.
-- `@AuraEnabled(cacheable=false) static LoginResult passwordLogin(String email, String password, String startUrl)` — returns `success`, optional `redirectUrl`, and generic `message` on failure.
+- `@AuraEnabled(cacheable=false) static DiscoverResult discover(String email)` — returns `type` **`SSO`** or **`PASSWORD`**, optional `redirectUrl` for SSO, and `correlationId`. Emits one **INFO** debug line per call (`corr=<id> email=<masked> route=<SSO|PASSWORD> [samlSetting=<api>]`).
+- `@AuraEnabled(cacheable=false) static LoginResult passwordLogin(String email, String password)` — returns `success`, optional `redirectUrl`, and generic `message` on failure. Emits one **INFO** debug line per call (`email=<masked> success=<bool>`).
 
 **Dependencies:** `SamlSsoConfig`, `Auth.AuthConfiguration.getSamlSsoUrl`, `Site`, `User`, `PermissionSetAssignment`, `Client_Sso_Routing__mdt`. Class is **`without sharing`** so Experience **Guest** can resolve users by email; **CRUD/FLS still apply** — Guest profile and permission sets must be configured deliberately.
 
-**Usage constraints:** Do not log secrets; do not return different discover outcomes for unknown vs known email; `startUrl` from the client is not trusted for redirects (normalized to `/s/`).
+**Usage constraints:** Do not log secrets; do not return different discover outcomes for unknown vs known email; post-auth landing is server-pinned to `/s/` (no client-supplied redirect parameter is accepted). On unexpected exceptions, **`System.debug` at WARN** records exception type (and discover **correlationId** where applicable) for diagnosis; `@AuraEnabled` responses still collapse to the safe PASSWORD route / generic error message regardless of internal failure mode.
+
+**Testability:** Three `@TestVisible` static seams (`TEST_ROUTING_ROWS`, `TEST_SSO_URL_OVERRIDE`, `TEST_COMMUNITY_BASE_URL`) let tests substitute the CMDT routing rows, the platform SAML URL build, and the community base URL — none of which are addressable from `@IsTest` directly. All seams default to `null` so production code follows the live path.
 
 ---
 
