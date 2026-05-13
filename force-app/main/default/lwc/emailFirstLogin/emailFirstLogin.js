@@ -9,6 +9,8 @@ const ROUTE_PASSWORD = 'PASSWORD';
 const FALLBACK_FORGOT_PATH = '/s/ForgotPassword';
 const GENERIC_CLIENT_ERROR = 'Something went wrong. Please try again.';
 const GENERIC_LOGIN_ERROR = 'Invalid username or password.';
+/** Must match CommunityLoginDiscoveryHandler.PASSWORD_HANDOFF_EMAIL_PARAM */
+const HANDOFF_EMAIL_PARAM = 'handoffEmail';
 
 export default class EmailFirstLogin extends LightningElement {
     step = STEP_EMAIL;
@@ -16,6 +18,8 @@ export default class EmailFirstLogin extends LightningElement {
     password = '';
     loading = false;
     errorMessage = '';
+    /** Set when opened from Login Discovery handoff (?handoffEmail=) */
+    handoffFromDiscovery = false;
 
     get isEmailStep() {
         return this.step === STEP_EMAIL;
@@ -31,6 +35,33 @@ export default class EmailFirstLogin extends LightningElement {
 
     get loadingOrEmptyPassword() {
         return this.loading || !this.password;
+    }
+
+    get isHandoffFromDiscovery() {
+        return this.handoffFromDiscovery === true;
+    }
+
+    /** Discovery entry URL — default /login at site origin (adjust if your site uses a different path). */
+    get discoveryLoginUrl() {
+        try {
+            return new URL('/login', window.location.origin).href;
+        } catch (e) {
+            return '/login';
+        }
+    }
+
+    connectedCallback() {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const ho = (params.get(HANDOFF_EMAIL_PARAM) || '').trim();
+            if (ho.includes('@')) {
+                this.email = ho;
+                this.step = STEP_PASSWORD;
+                this.handoffFromDiscovery = true;
+            }
+        } catch (e) {
+            // ignore malformed URL
+        }
     }
 
     // Map current `/login` URL to the standard Experience Forgot Password page; otherwise use `/s/ForgotPassword`.
@@ -80,6 +111,10 @@ export default class EmailFirstLogin extends LightningElement {
     }
 
     handleBack() {
+        if (this.handoffFromDiscovery) {
+            window.location.assign(this.discoveryLoginUrl);
+            return;
+        }
         this.errorMessage = '';
         this.password = '';
         this.step = STEP_EMAIL;

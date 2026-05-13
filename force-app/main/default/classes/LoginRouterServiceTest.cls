@@ -80,7 +80,7 @@ private class LoginRouterServiceTest {
 
     @IsTest
     static void discover_unknownEmail_returnsNoneRoute() {
-        LoginRouterService.TEST_ROUTING_ROWS = new List<Client_Sso_Routing__mdt>();
+        LoginRouteResolver.TEST_ROUTING_ROWS = new List<Client_Sso_Routing__mdt>();
         LoginRouterService.DiscoverResult r = LoginRouterService.discover(newUniqueEmail());
         System.assertEquals('NONE', r.type);
         System.assertEquals(null, r.redirectUrl);
@@ -92,7 +92,7 @@ private class LoginRouterServiceTest {
         String shared = 'collide-' + System.currentTimeMillis() + '-' + counter + '@routertest.invalid';
         insertTestUserWithCredentials(shared, 'collide-a-' + counter + '@routertest.invalid');
         insertTestUserWithCredentials('other-' + counter + '@routertest.invalid', shared);
-        LoginRouterService.TEST_ROUTING_ROWS = new List<Client_Sso_Routing__mdt>();
+        LoginRouteResolver.TEST_ROUTING_ROWS = new List<Client_Sso_Routing__mdt>();
 
         LoginRouterService.DiscoverResult r = LoginRouterService.discover(shared);
 
@@ -104,7 +104,7 @@ private class LoginRouterServiceTest {
     static void discover_userWithoutMarker_returnsPasswordRoute() {
         String email = newUniqueEmail();
         insertTestUser(email);
-        LoginRouterService.TEST_ROUTING_ROWS = new List<Client_Sso_Routing__mdt>();
+        LoginRouteResolver.TEST_ROUTING_ROWS = new List<Client_Sso_Routing__mdt>();
 
         LoginRouterService.DiscoverResult r = LoginRouterService.discover(email);
 
@@ -118,7 +118,7 @@ private class LoginRouterServiceTest {
         User u = insertTestUser(email);
         PermissionSet ps = insertMarkerPermissionSet();
         assignMarker(u, ps);
-        LoginRouterService.TEST_ROUTING_ROWS = new List<Client_Sso_Routing__mdt>();
+        LoginRouteResolver.TEST_ROUTING_ROWS = new List<Client_Sso_Routing__mdt>();
 
         LoginRouterService.DiscoverResult r = LoginRouterService.discover(email);
 
@@ -132,7 +132,7 @@ private class LoginRouterServiceTest {
         User u = insertTestUser(email);
         PermissionSet ps = insertMarkerPermissionSet();
         assignMarker(u, ps);
-        LoginRouterService.TEST_ROUTING_ROWS = new List<Client_Sso_Routing__mdt>{
+        LoginRouteResolver.TEST_ROUTING_ROWS = new List<Client_Sso_Routing__mdt>{
             new Client_Sso_Routing__mdt(
                 Permission_Set_Name__c = ps.Name,
                 Protocol__c = 'SAML',
@@ -140,7 +140,7 @@ private class LoginRouterServiceTest {
                 Saml_Setting_Api_Name__c = 'Test_Saml_Setting'
             )
         };
-        LoginRouterService.TEST_SSO_URL_OVERRIDE = 'https://idp.example/start';
+        LoginRouteResolver.TEST_SSO_URL_OVERRIDE = 'https://idp.example/start';
 
         LoginRouterService.DiscoverResult r = LoginRouterService.discover(email);
 
@@ -154,7 +154,7 @@ private class LoginRouterServiceTest {
         User u = insertTestUser(email);
         PermissionSet ps = insertMarkerPermissionSet();
         assignMarker(u, ps);
-        LoginRouterService.TEST_ROUTING_ROWS = new List<Client_Sso_Routing__mdt>{
+        LoginRouteResolver.TEST_ROUTING_ROWS = new List<Client_Sso_Routing__mdt>{
             new Client_Sso_Routing__mdt(
                 Permission_Set_Name__c = ps.Name,
                 Protocol__c = 'SAML',
@@ -162,7 +162,7 @@ private class LoginRouterServiceTest {
                 Saml_Setting_Api_Name__c = 'Test_Saml_Setting'
             )
         };
-        LoginRouterService.TEST_SSO_URL_OVERRIDE = 'https://idp.example/start';
+        LoginRouteResolver.TEST_SSO_URL_OVERRIDE = 'https://idp.example/start';
 
         LoginRouterService.DiscoverResult r = LoginRouterService.discover(u.Username);
 
@@ -176,7 +176,7 @@ private class LoginRouterServiceTest {
         User u = insertTestUser(email);
         PermissionSet ps = insertMarkerPermissionSet();
         assignMarker(u, ps);
-        LoginRouterService.TEST_ROUTING_ROWS = new List<Client_Sso_Routing__mdt>{
+        LoginRouteResolver.TEST_ROUTING_ROWS = new List<Client_Sso_Routing__mdt>{
             new Client_Sso_Routing__mdt(
                 Permission_Set_Name__c = ps.Name,
                 Protocol__c = 'SAML',
@@ -185,7 +185,7 @@ private class LoginRouterServiceTest {
                 Saml_Sso_Config_Id__c = '00D000000000000EAA'
             )
         };
-        LoginRouterService.TEST_SSO_URL_OVERRIDE = 'https://idp.example/with-id-field';
+        LoginRouteResolver.TEST_SSO_URL_OVERRIDE = 'https://idp.example/with-id-field';
 
         LoginRouterService.DiscoverResult r = LoginRouterService.discover(email);
 
@@ -204,7 +204,7 @@ private class LoginRouterServiceTest {
         );
         insert ps;
         assignMarker(u, ps);
-        LoginRouterService.TEST_ROUTING_ROWS = new List<Client_Sso_Routing__mdt>{
+        LoginRouteResolver.TEST_ROUTING_ROWS = new List<Client_Sso_Routing__mdt>{
             new Client_Sso_Routing__mdt(
                 Permission_Set_Name__c = ps.Label,
                 Protocol__c = 'SAML',
@@ -212,7 +212,7 @@ private class LoginRouterServiceTest {
                 Saml_Setting_Api_Name__c = 'Test_Saml_Setting'
             )
         };
-        LoginRouterService.TEST_SSO_URL_OVERRIDE = 'https://idp.example/label-match';
+        LoginRouteResolver.TEST_SSO_URL_OVERRIDE = 'https://idp.example/label-match';
 
         LoginRouterService.DiscoverResult r = LoginRouterService.discover(email);
 
@@ -226,7 +226,7 @@ private class LoginRouterServiceTest {
         User u = insertTestUser(email);
         PermissionSet ps = insertMarkerPermissionSet();
         assignMarker(u, ps);
-        LoginRouterService.TEST_ROUTING_ROWS = new List<Client_Sso_Routing__mdt>{
+        LoginRouteResolver.TEST_ROUTING_ROWS = new List<Client_Sso_Routing__mdt>{
             new Client_Sso_Routing__mdt(
                 Permission_Set_Name__c = ps.Name,
                 Protocol__c = 'SAML',

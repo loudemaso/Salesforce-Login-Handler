@@ -4,7 +4,7 @@
         <apexClass>LoginRouterService</apexClass>
         <enabled>true</enabled>
     </classAccesses>
-    <description>Assign to the Experience Cloud site Guest User. Grants Apex only; admins must add least-privilege read to User and PermissionSetAssignment (and FLS) per org security review so discover() can run.</description>
+    <description>Assign to the Experience Cloud site Guest User when the site uses emailFirstLogin (password handoff page and/or custom Login page). Grants Apex on LoginRouterService only; admins configure User / PermissionSetAssignment access per org.</description>
     <hasActivationRequired>false</hasActivationRequired>
     <label>Login Router Guest</label>
 </PermissionSet>

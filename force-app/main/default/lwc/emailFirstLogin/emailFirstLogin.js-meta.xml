@@ -3,7 +3,7 @@
     <apiVersion>61.0</apiVersion>
     <isExposed>true</isExposed>
     <masterLabel>Email First Login</masterLabel>
-    <description>Email-first login: SAML when CMDT + marker match; password step only for a single non-SSO user; otherwise stay on the first step.</description>
+    <description>Email-first login: SAML when CMDT + marker match; password via Site.login. On Login Discovery sites, place on the handoff page (URL must match CommunityLoginDiscoveryHandler.PASSWORD_HANDOFF_PAGE_PATH); optional on custom Login page.</description>
     <targets>
         <target>lightningCommunity__Page</target>
     </targets>

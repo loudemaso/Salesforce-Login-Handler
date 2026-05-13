@@ -30,6 +30,17 @@
             </template>
 
             <template lwc:if={isPasswordStep}>
+                <template lwc:if={isHandoffFromDiscovery}>
+                    <lightning-input
+                        type="email"
+                        label="Email"
+                        name="email-readonly"
+                        value={email}
+                        disabled
+                        variant="label-stacked"
+                    ></lightning-input>
+                </template>
+
                 <lightning-input
                     type="password"
                     label="Password"

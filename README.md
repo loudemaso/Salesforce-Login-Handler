@@ -1,6 +1,6 @@
 # Salesforce Login Handler
 
-Salesforce-side metadata and code for an **email-first** Experience Cloud login: SAML routing via **Custom Metadata** + marker permission sets, and **password** sign-in via **`Site.login`** (see [SSO_ExperienceCloud_EmailFirst_Login_Handoff.txt](SSO_ExperienceCloud_EmailFirst_Login_Handoff.txt)).
+Salesforce metadata and Apex for **email-first** Experience Cloud login: after the visitor enters an identifier, **login discovery** calls **`CommunityLoginDiscoveryHandler`**, which uses **`LoginRouteResolver`** (CMDT + marker permission sets + **`Auth.AuthConfiguration.getSamlSsoUrl`**) to send **SSO** users to the IdP or **password** users to a **Guest** Builder **handoff** page where **`emailFirstLogin`** completes sign-in with **`LoginRouterService.passwordLogin`** (**`Site.login`**). You can also place **emailFirstLogin** on the main **Login** page in Builder when **Login Page Type** is **Experience Builder Page** (same resolver and CMDT; no **`Auth.LoginDiscoveryHandler`**).
 
 ## Local setup
 
@@ -12,10 +12,12 @@ Salesforce-side metadata and code for an **email-first** Experience Cloud login:
 
 | Artifact | Role |
 | --- | --- |
-| `LoginRouterService` | `discover` + `passwordLogin` Apex |
-| `emailFirstLogin` LWC | Target `lightningCommunity__Page` (drag onto **Login** page) |
+| `CommunityLoginDiscoveryHandler` | **`global`** **`Auth.LoginDiscoveryHandler`** — assign in **Login & Registration** |
+| `LoginRouteResolver` | Shared CMDT + SAML URL resolution (discovery + LWC) |
+| `LoginRouterService` | **`discover`** + **`passwordLogin`** for **emailFirstLogin** (Guest) |
+| `emailFirstLogin` LWC | Target `lightningCommunity__Page` — handoff page (required with discovery) and optional **Login** page |
 | `Client_Sso_Routing__mdt` | Routing rows (create records per org; none shipped in the package) |
-| `Login_Router_Guest` | Permission set — **Apex class access only** |
+| `Login_Router_Guest` | Permission set — **Apex class access** to **`LoginRouterService`** for **Guest** |
 
 ## Experience Cloud setup
 
@@ -27,41 +29,46 @@ After you deploy, configure **each** target org in this order.
 sf project deploy start --source-dir force-app --target-org <alias>
 ```
 
-In **Setup**, confirm **`LoginRouterService`**, **`emailFirstLogin`**, **`Client_Sso_Routing__mdt`**, and permission set **`Login_Router_Guest`** are present.
+In **Setup**, confirm **`CommunityLoginDiscoveryHandler`**, **`LoginRouteResolver`**, **`LoginRouterService`**, **`emailFirstLogin`**, **`Client_Sso_Routing__mdt`**, and permission set **`Login_Router_Guest`** are present.
 
-**2. Experience Builder login page**
+**2. Login discovery**
 
-1. Open the **Experience Cloud** site → **Experience Builder** (or **Digital Experiences → All Sites → Builder**).
-2. Go **Workspaces → Administration → Login & Registration** (wording can vary slightly by **Aura** vs **LWR** template).
-3. Set **Login Page Type** to **Experience Builder Page** (not Visualforce-only default, if you are replacing it).
-4. Open the **Login** page in Builder, add the **Email First Login** component from the palette, adjust layout (e.g. logo) as needed, then **Publish** the site.
-5. Use the site’s **`/s/…`** login URL for tests and bookmarks (for example `…/s/login`); that route serves the Builder login experience.
+1. Open the **Experience Cloud** site → **Experience Builder**, then **Workspaces → Administration → Login & Registration** (wording can vary slightly by **Aura** vs **LWR** template).
+2. Set **Login Discovery Handler** to **`CommunityLoginDiscoveryHandler`** and **Execute Login As** to the user Salesforce requires for this feature.
+3. Set **Login Page Type** to **Login Discovery Page** (or equivalent) so visitors use the platform identifier step described in the [**LoginDiscoveryHandler**](https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_interface_Auth_LoginDiscoveryHandler.htm) documentation.
+4. **Password handoff page (required):** In Builder, create a page whose URL matches **`CommunityLoginDiscoveryHandler.PASSWORD_HANDOFF_PAGE_PATH`** (default **`/s/finish-email-login`** → slug **`finish-email-login`**). Add the **Email First Login** LWC, publish, and make that page **public for unauthenticated (Guest) users**. If Guest cannot load the page, the browser may redirect to **`/login?ec=302&startURL=...`** with **`startURL`** pointing at the handoff URL; fix page visibility, then verify in **incognito** by opening the handoff path directly and confirming the LWC loads. After discovery, **password** users arrive with **`?handoffEmail=`**; they sign in via **`Site.login`** on that page.
+5. **Publish** when prompted.
 
-**3. `User` visibility for Guest (`discover` query)**
+**3. Optional: custom Login page in Builder**
 
-`LoginRouterService.discover` runs as the **Guest** user and queries **`User`** by **Username** or **Email**.
+1. Set **Login Page Type** to **Experience Builder Page** where applicable.
+2. Open the **Login** page in Builder, add **Email First Login**, adjust layout, **Publish**.
+3. Continue with **Guest** steps (**4–5**) so **`LoginRouterService`** can run.
 
-- In **Setup**, configure **User** sharing so **external** / Experience **Guest** access is appropriate for your org. The pattern we validated is **User** organization-wide default / **external user** access set to **Public Read Only** (so Guest can read `User` rows needed for login routing **without** extra profile/permission-set grants on **User**). Ensure Guest can read **`User.Email`** and **`User.Username`** (field-level security) so discovery and password login can resolve the sign-in identifier.
-- With **Public Read Only** for external users on **User**: **do not** add **User** object or **User** field permissions on the **`Login_Router_Guest`** permission set (and avoid redundant **User** object access on the Guest user solely for this feature). Rely on that OWD; then tune **PermissionSet** / **PermissionSetAssignment** only (see step 4).
-- If your org **cannot** use **Public Read Only** on **User** for external users, you must agree another supported way for Guest to read `User` for login routing, then re-test with a Guest **debug log**.
+**4. `User` visibility for Guest (LWC + password handoff)**
 
-**4. Guest user: Apex + Permission Set rows (not `User` on `Login_Router_Guest` when step 3 applies)**
+**`LoginRouterService`** runs as **Guest** on the handoff page and (when used) on the custom **Login** page. It queries **`User`** by **Username** or **Email** for **`discover`** and **`passwordLogin`**.
 
-1. Open the site **Guest User** (**Workspaces → Administration → Settings**, or equivalent, then the Guest user / profile link).
-2. Assign the **`Login_Router_Guest`** permission set. That set ships with **Apex class access only**—it is **not** used to grant **`User`** access when step 3 is satisfied via **Public Read Only**.
-3. **`PermissionSet`** and **`PermissionSetAssignment`** are separate from **User** OWD. Grant the Guest user **Read** (and minimal field access) on those objects via the **Guest profile** or **another** permission set if `discover` cannot read permission set assignments—follow your security review.
+- Configure **User** sharing so **external** / Experience **Guest** access matches your security model. A common pattern is **User** organization-wide default / **external user** access **Public Read Only** so Guest can read rows needed for routing without granting **User** on **`Login_Router_Guest`**.
+- Ensure Guest can read **`User.Email`** and **`User.Username`** (field-level security).
 
-**5. CMDT and SAML (per org, per SSO client)**
+**5. Guest user: Apex + Permission Set rows**
 
-1. Ensure **Single Sign-On Settings (SAML)** exist in Setup; note each row’s **`DeveloperName`**.
-2. Create **`Client_Sso_Routing__mdt`** records: `Permission_Set_Name__c` (must match the marker permission set’s **`Name`** (API) or **`Label`** exactly), `Saml_Setting_Api_Name__c` (SAML row **`DeveloperName`** for logging and fallback lookup), **`Saml_Sso_Config_Id__c`** (optional but **recommended**: paste the **`SamlSsoConfig` Id** from Setup or `SELECT Id, DeveloperName FROM SamlSsoConfig` — **Experience Guest** usually cannot query **SamlSsoConfig** by name, so SSO URLs fail without this Id), `Protocol__c = SAML`, `Is_Active__c`, `Priority__c`.
-3. Create **marker permission sets** (no privileges required), assign them to users who should SSO, and keep CMDT rows **active** for production routes.
+1. Open the site **Guest User**.
+2. Assign **`Login_Router_Guest`** (**`LoginRouterService`** Apex only).
+3. Grant **`PermissionSet`** / **`PermissionSetAssignment`** read to Guest via profile or another permission set if **`discover`** cannot read assignments.
 
-**6. Members and smoke tests**
+**6. Org SAML, CMDT, and markers**
+
+1. In **Setup → Single Sign-On Settings**, ensure **SAML** is enabled for the org (**SAML Enabled** on the main Single Sign-On screen). Create or identify **SAML Single Sign-On Setting** rows; note each **`DeveloperName`** and **`SamlSsoConfig` Id** (`SELECT Id, DeveloperName FROM SamlSsoConfig`).
+2. Create **`Client_Sso_Routing__mdt`** records: **`Permission_Set_Name__c`** (must match the marker permission set’s **`Name`** (API) or **`Label`** exactly), **`Saml_Setting_Api_Name__c`** (that SAML row’s **`DeveloperName`**), **`Saml_Sso_Config_Id__c`** (the **SamlSsoConfig** **Id** — set this when Guest or other callers cannot resolve the config via SOQL), **`Protocol__c = SAML`**, **`Is_Active__c`**, **`Priority__c`**.
+3. Create **marker permission sets** (no privileges required), assign them to users who should use that SSO route, and keep CMDT rows **active**.
+
+**7. Members and smoke tests**
 
 1. Add test users as **Experience site members** with a valid **login license**.
-2. On step 1, members can enter **`User.Email`** or **`User.Username`** as long as it **uniquely** matches one **active** user (same rule for SSO discovery). Password sign-in resolves that user and calls **`Site.login`** with their **`Username`**.
-3. Test **password** login with a user **without** an SSO marker (discover returns **`PASSWORD`**). Test **SSO** redirect when SAML URL builds. If SAML is misconfigured, discover should still return **`PASSWORD`** for a single matching SSO-mapped user (fallback); use Guest **debug logs** (**WARN** `ssoUrlBlank`) to fix **`Saml_Setting_Api_Name__c`** / SAML settings. Confirm unknown or ambiguous identifiers return **`NONE`**. Use an **incognito** window to avoid session noise.
+2. Members can enter **`User.Email`** or **`User.Username`** as long as it **uniquely** matches one **active** user.
+3. Test **SSO** redirect to the client IdP. Test **password** via discovery → handoff → **Sign in** without landing on **`PasswordVerificationUi`**. Unknown or ambiguous identifiers: discovery throws **invalid identifier**; LWC **`discover`** returns **`NONE`**. Use **incognito** to avoid session noise.
 
 ## Documentation
 
@@ -69,7 +76,7 @@ Specs follow **[Documentation Spec.md](Documentation%20Spec.md)** (required sect
 
 - [documentation/Feature-Email-first-Experience-login.md](documentation/Feature-Email-first-Experience-login.md) — runtime, UI contract, components.
 - [documentation/System-Components.md](documentation/System-Components.md) — CMDT fields and Apex/LWC contracts.
-- [documentation/Login-discovery-handler-option.md](documentation/Login-discovery-handler-option.md) — when **`Auth.LoginDiscoveryHandler`** / Help passwordless guidance applies vs this repo’s LWC + **`Site.login`** path (and **`Saml_Sso_Config_Id__c`** tradeoff).
+- [documentation/Platform-login-discovery.md](documentation/Platform-login-discovery.md) — **`CommunityLoginDiscoveryHandler`** and login discovery contract.
 
 ## Project shape
 
