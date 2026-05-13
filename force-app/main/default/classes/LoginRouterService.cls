@@ -1,6 +1,6 @@
 /**
- * Legacy Experience Guest + LWC entrypoints: discover + password via Site.login. Primary Experience login is
- * CommunityLoginDiscoveryHandler (platform Login Discovery); this class remains for optional Builder LWC use.
+ * Experience Guest entrypoints for {@code emailFirstLogin}: {@code discover} (identifier routing + SAML URL) and
+ * {@code passwordLogin} via {@code Site.login}.
  */
 public without sharing class LoginRouterService {
     private static final String LOG_PFX = 'LoginRouterService|';
@@ -23,11 +23,12 @@ public without sharing class LoginRouterService {
     }
 
     @AuraEnabled(cacheable = false)
-    public static DiscoverResult discover(String email) {
+    public static DiscoverResult discover(String email, String communityBaseUrl) {
         DiscoverResult out = new DiscoverResult();
         out.correlationId = newCorrelationId();
         out.type = ROUTE_NONE;
 
+        String normalizedBase = LoginRouteResolver.normalizeExperienceBaseUrl(communityBaseUrl);
         System.debug(
             LoggingLevel.DEBUG,
             LOG_PFX +
@@ -35,13 +36,17 @@ public without sharing class LoginRouterService {
                 out.correlationId +
                 ' id=' +
                 LoginRouteResolver.maskIdentifier(email) +
+                ' communityBaseRaw=' +
+                summarize(communityBaseUrl) +
+                ' communityBaseNorm=' +
+                summarize(normalizedBase) +
                 ' siteGetBaseUrl=' +
                 summarize(Site.getBaseUrl())
         );
 
         String samlApi = null;
         try {
-            LoginRouteResolver.DiscoverOutcome resolved = LoginRouteResolver.resolveDiscover(email);
+            LoginRouteResolver.DiscoverOutcome resolved = LoginRouteResolver.resolveDiscover(email, normalizedBase);
             out.type = resolved.routeType;
             out.redirectUrl = resolved.redirectUrl;
             samlApi = resolved.samlSettingApi;

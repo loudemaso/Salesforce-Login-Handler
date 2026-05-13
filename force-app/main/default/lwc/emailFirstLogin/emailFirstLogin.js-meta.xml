@@ -3,7 +3,7 @@
     <apiVersion>61.0</apiVersion>
     <isExposed>true</isExposed>
     <masterLabel>Email First Login</masterLabel>
-    <description>Email-first login: SAML when CMDT + marker match; password via Site.login. On Login Discovery sites, place on the handoff page (URL must match CommunityLoginDiscoveryHandler.PASSWORD_HANDOFF_PAGE_PATH); optional on custom Login page.</description>
+    <description>Email-first Experience login: SAML when CMDT + marker match; password on the same LWC via Site.login. Place on the Experience Builder Login page (Guest-accessible).</description>
     <targets>
         <target>lightningCommunity__Page</target>
     </targets>

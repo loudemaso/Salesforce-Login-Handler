@@ -72,7 +72,7 @@ private class LoginRouterServiceTest {
 
     @IsTest
     static void discover_blankEmail_returnsNoneRoute() {
-        LoginRouterService.DiscoverResult r = LoginRouterService.discover('');
+        LoginRouterService.DiscoverResult r = LoginRouterService.discover('', null);
         System.assertEquals('NONE', r.type);
         System.assertEquals(null, r.redirectUrl);
         System.assertNotEquals(null, r.correlationId);
@@ -81,7 +81,7 @@ private class LoginRouterServiceTest {
     @IsTest
     static void discover_unknownEmail_returnsNoneRoute() {
         LoginRouteResolver.TEST_ROUTING_ROWS = new List<Client_Sso_Routing__mdt>();
-        LoginRouterService.DiscoverResult r = LoginRouterService.discover(newUniqueEmail());
+        LoginRouterService.DiscoverResult r = LoginRouterService.discover(newUniqueEmail(), null);
         System.assertEquals('NONE', r.type);
         System.assertEquals(null, r.redirectUrl);
     }
@@ -94,7 +94,7 @@ private class LoginRouterServiceTest {
         insertTestUserWithCredentials('other-' + counter + '@routertest.invalid', shared);
         LoginRouteResolver.TEST_ROUTING_ROWS = new List<Client_Sso_Routing__mdt>();
 
-        LoginRouterService.DiscoverResult r = LoginRouterService.discover(shared);
+        LoginRouterService.DiscoverResult r = LoginRouterService.discover(shared, null);
 
         System.assertEquals('NONE', r.type);
         System.assertEquals(null, r.redirectUrl);
@@ -106,7 +106,7 @@ private class LoginRouterServiceTest {
         insertTestUser(email);
         LoginRouteResolver.TEST_ROUTING_ROWS = new List<Client_Sso_Routing__mdt>();
 
-        LoginRouterService.DiscoverResult r = LoginRouterService.discover(email);
+        LoginRouterService.DiscoverResult r = LoginRouterService.discover(email, null);
 
         System.assertEquals('PASSWORD', r.type);
         System.assertEquals(null, r.redirectUrl);
@@ -120,7 +120,7 @@ private class LoginRouterServiceTest {
         assignMarker(u, ps);
         LoginRouteResolver.TEST_ROUTING_ROWS = new List<Client_Sso_Routing__mdt>();
 
-        LoginRouterService.DiscoverResult r = LoginRouterService.discover(email);
+        LoginRouterService.DiscoverResult r = LoginRouterService.discover(email, null);
 
         System.assertEquals('PASSWORD', r.type);
         System.assertEquals(null, r.redirectUrl);
@@ -142,7 +142,7 @@ private class LoginRouterServiceTest {
         };
         LoginRouteResolver.TEST_SSO_URL_OVERRIDE = 'https://idp.example/start';
 
-        LoginRouterService.DiscoverResult r = LoginRouterService.discover(email);
+        LoginRouterService.DiscoverResult r = LoginRouterService.discover(email, null);
 
         System.assertEquals('SSO', r.type);
         System.assertEquals('https://idp.example/start', r.redirectUrl);
@@ -164,7 +164,7 @@ private class LoginRouterServiceTest {
         };
         LoginRouteResolver.TEST_SSO_URL_OVERRIDE = 'https://idp.example/start';
 
-        LoginRouterService.DiscoverResult r = LoginRouterService.discover(u.Username);
+        LoginRouterService.DiscoverResult r = LoginRouterService.discover(u.Username, null);
 
         System.assertEquals('SSO', r.type);
         System.assertEquals('https://idp.example/start', r.redirectUrl);
@@ -187,7 +187,7 @@ private class LoginRouterServiceTest {
         };
         LoginRouteResolver.TEST_SSO_URL_OVERRIDE = 'https://idp.example/with-id-field';
 
-        LoginRouterService.DiscoverResult r = LoginRouterService.discover(email);
+        LoginRouterService.DiscoverResult r = LoginRouterService.discover(email, null);
 
         System.assertEquals('SSO', r.type);
         System.assertEquals('https://idp.example/with-id-field', r.redirectUrl);
@@ -214,7 +214,7 @@ private class LoginRouterServiceTest {
         };
         LoginRouteResolver.TEST_SSO_URL_OVERRIDE = 'https://idp.example/label-match';
 
-        LoginRouterService.DiscoverResult r = LoginRouterService.discover(email);
+        LoginRouterService.DiscoverResult r = LoginRouterService.discover(email, null);
 
         System.assertEquals('SSO', r.type);
         System.assertEquals('https://idp.example/label-match', r.redirectUrl);
@@ -236,7 +236,7 @@ private class LoginRouterServiceTest {
         };
         // No TEST_SSO_URL_OVERRIDE: real SamlSsoConfig query returns no rows → URL is null → PASSWORD fallback.
 
-        LoginRouterService.DiscoverResult r = LoginRouterService.discover(email);
+        LoginRouterService.DiscoverResult r = LoginRouterService.discover(email, null);
 
         System.assertEquals('PASSWORD', r.type);
         System.assertEquals(null, r.redirectUrl);

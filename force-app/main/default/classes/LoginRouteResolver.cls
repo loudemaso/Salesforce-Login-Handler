@@ -1,9 +1,8 @@
 /**
- * Shared CMDT + marker permission set routing for SAML SSO URLs, used by LoginRouterService (Guest LWC) and
- * CommunityLoginDiscoveryHandler (platform login discovery). without sharing so Guest callers can resolve User.
- * For login discovery, pass {@code samlCommunityBaseUrlOverride} from request {@code CommunityUrl} so
- * {@code Auth.AuthConfiguration.getSamlSsoUrl} receives the Experience base ({@code my.site.com}), not only
- * {@code Site.getBaseUrl()} from the discovery execution context.
+ * Shared CMDT + marker permission set routing for SAML SSO URLs, used by {@code LoginRouterService} (Experience
+ * Guest LWC). Pass {@code experienceBaseUrlOverride} when {@code Site.getBaseUrl()} in that context is not the
+ * community root (e.g. pass {@code window.location.origin} from the LWC) so {@code Auth.AuthConfiguration.getSamlSsoUrl}
+ * receives the Experience {@code my.site.com} host.
  */
 public without sharing class LoginRouteResolver {
     private static final String LOG_PFX = 'LoginRouteResolver|';
@@ -34,21 +33,20 @@ public without sharing class LoginRouteResolver {
     }
 
     /**
-     * @param samlCommunityBaseUrlOverride When non-blank (e.g. from Auth.LoginDiscoveryHandler requestAttributes
-     *         {@code CommunityUrl} stripped to site root), used as the first argument to {@code getSamlSsoUrl} instead of
-     *         {@code Site.getBaseUrl()}. Login discovery often runs where {@code Site.getBaseUrl()} is the org host
-     *         ({@code my.salesforce.com}) while SAML for Experience expects the community host ({@code my.site.com}),
-     *         which otherwise yields a blank SSO URL.
+     * @param experienceBaseUrlOverride When non-blank, normalized with {@code normalizeExperienceBaseUrl} and used
+     *         as the first argument to {@code getSamlSsoUrl} instead of {@code Site.getBaseUrl()} alone. Typical source:
+     *         {@code window.location.origin} from {@code emailFirstLogin}.
      */
-    public static DiscoverOutcome resolveDiscover(String identifier, String samlCommunityBaseUrlOverride) {
+    public static DiscoverOutcome resolveDiscover(String identifier, String experienceBaseUrlOverride) {
         DiscoverOutcome o = new DiscoverOutcome();
         o.routeType = ROUTE_NONE;
+        String experienceBaseEffective = normalizeExperienceBaseUrl(experienceBaseUrlOverride);
 
         logInfo(
             'resolveDiscover enter id=' +
                 maskIdentifier(identifier) +
-                ' samlBaseOverride=' +
-                summarizeUrlForLog(samlCommunityBaseUrlOverride) +
+                ' experienceBaseEffective=' +
+                summarizeUrlForLog(experienceBaseEffective) +
                 ' siteGetBaseUrl=' +
                 summarizeUrlForLog(Site.getBaseUrl()) +
                 ' testCommunityOverride=' +
@@ -67,7 +65,7 @@ public without sharing class LoginRouteResolver {
         o.matchedUserId = users[0].Id;
         logDbg('resolveDiscover userId=' + o.matchedUserId + ' usernameLast3=' + lastChars(users[0].Username, 3));
 
-        SsoBuildResult built = computeSsoUrlForUser(users[0].Id, samlCommunityBaseUrlOverride);
+        SsoBuildResult built = computeSsoUrlForUser(users[0].Id, experienceBaseEffective);
         if (built != null && String.isNotBlank(built.url)) {
             o.routeType = ROUTE_SSO;
             o.redirectUrl = built.url;
@@ -116,28 +114,12 @@ public without sharing class LoginRouteResolver {
         return o;
     }
 
-    /** Returns a PageReference when CMDT maps the user to a working SAML initiation URL; otherwise null. */
-    public static PageReference buildSsoRedirectPageReference(Id userId) {
-        List<User> users = [SELECT Id FROM User WHERE Id = :userId AND IsActive = TRUE LIMIT 1];
-        if (users.isEmpty()) {
-            logDbg('buildSsoRedirectPageReference no active user userId=' + userId);
-            return null;
-        }
-        SsoBuildResult built = computeSsoUrlForUser(userId, null);
-        if (built == null || String.isBlank(built.url)) {
-            logDbg('buildSsoRedirectPageReference noSsoUrl userId=' + userId);
-            return null;
-        }
-        logDbg('buildSsoRedirectPageReference ok userId=' + userId + ' urlLen=' + built.url.length());
-        return new PageReference(built.url);
-    }
-
     private class SsoBuildResult {
         String url;
         String samlApi;
     }
 
-    private static SsoBuildResult computeSsoUrlForUser(Id userId, String samlCommunityBaseUrlOverride) {
+    private static SsoBuildResult computeSsoUrlForUser(Id userId, String experienceBaseUrlOverride) {
         Set<String> markerNames = loadPermissionSetNames(userId);
         if (markerNames.isEmpty()) {
             logDbg('computeSsoUrlForUser userId=' + userId + ' noMarkers');
@@ -164,7 +146,7 @@ public without sharing class LoginRouteResolver {
                 ' cmdtHasSsoConfigIdText=' +
                 String.isNotBlank(match.Saml_Sso_Config_Id__c)
         );
-        String ssoUrl = buildSamlInitiationUrl(samlApi, match.Saml_Sso_Config_Id__c, samlCommunityBaseUrlOverride);
+        String ssoUrl = buildSamlInitiationUrl(samlApi, match.Saml_Sso_Config_Id__c, experienceBaseUrlOverride);
         if (String.isBlank(ssoUrl)) {
             System.debug(
                 LoggingLevel.WARN,
@@ -252,7 +234,7 @@ public without sharing class LoginRouteResolver {
     private static String buildSamlInitiationUrl(
         String samlSettingDeveloperName,
         String optionalSamlSsoConfigIdText,
-        String samlCommunityBaseUrlOverride
+        String experienceBaseUrlOverride
     ) {
         if (TEST_SSO_URL_OVERRIDE != null) {
             logDbg('buildSamlInitiationUrl TEST_SSO_URL_OVERRIDE active; skipping platform getSamlSsoUrl');
@@ -266,7 +248,7 @@ public without sharing class LoginRouteResolver {
             );
             return null;
         }
-        String communityBase = communityBaseUrl(samlCommunityBaseUrlOverride);
+        String communityBase = communityBaseUrl(experienceBaseUrlOverride);
         if (String.isBlank(communityBase)) {
             System.debug(LoggingLevel.WARN, LOG_PFX + 'buildSamlInitiationUrl communityBaseBlank=true');
             return null;
@@ -326,16 +308,42 @@ public without sharing class LoginRouteResolver {
         return rows[0].Id;
     }
 
-    private static String communityBaseUrl(String samlCommunityBaseUrlOverride) {
+    /**
+     * Trims a community or site URL to the root used for {@code Auth.AuthConfiguration.getSamlSsoUrl} (no trailing
+     * slash; strips trailing {@code /login} and {@code /s/login}). Returns null when input is blank or normalizes to empty.
+     */
+    public static String normalizeExperienceBaseUrl(String raw) {
+        if (String.isBlank(raw)) {
+            return null;
+        }
+        raw = raw.trim();
+        while (raw.endsWith('/')) {
+            raw = raw.substring(0, raw.length() - 1);
+        }
+        if (String.isBlank(raw)) {
+            return null;
+        }
+        String lower = raw.toLowerCase();
+        for (String trail : new List<String>{ '/s/login', '/login' }) {
+            if (lower.endsWith(trail)) {
+                raw = raw.substring(0, raw.length() - trail.length());
+                while (raw.endsWith('/')) {
+                    raw = raw.substring(0, raw.length() - 1);
+                }
+                lower = raw.toLowerCase();
+            }
+        }
+        return String.isBlank(raw) ? null : raw;
+    }
+
+    private static String communityBaseUrl(String experienceBaseUrlOverride) {
         if (TEST_COMMUNITY_BASE_URL != null) {
             logDbg('communityBaseUrl using TEST_COMMUNITY_BASE_URL');
             return TEST_COMMUNITY_BASE_URL;
         }
-        if (String.isNotBlank(samlCommunityBaseUrlOverride)) {
-            String o = samlCommunityBaseUrlOverride.trim();
-            String out = o.endsWith('/') ? o.substring(0, o.length() - 1) : o;
-            logDbg('communityBaseUrl source=samlCommunityBaseUrlOverride value=' + out);
-            return out;
+        if (String.isNotBlank(experienceBaseUrlOverride)) {
+            logDbg('communityBaseUrl source=experienceBaseUrlOverride value=' + summarizeUrlForLog(experienceBaseUrlOverride));
+            return experienceBaseUrlOverride;
         }
         String base = Site.getBaseUrl();
         String out = String.isBlank(base) ? null : base.removeEnd('/');
